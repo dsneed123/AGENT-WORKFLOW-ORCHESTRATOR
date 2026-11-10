@@ -2,6 +2,11 @@ from agent import Agent
 agent1 = Agent("qwen3-coder-next:latest","agent1")
 agent2 = Agent("qwen3-coder-next:latest", "agent2")
 
+class Workflow:
+    def __init__(self, agents, purpose, alwaysOn):
+
+    def run():
+        return 0
 
 
 if agent1.spin_up():
