@@ -1,6 +1,7 @@
 import ollama
 class Agent:
-    def __init__(self, model, name):
+    def __init__(self, model, name, system_prompt=""):
+        self.system_prompt=system_prompt
         self.model = model
         self.name = name
 
@@ -13,14 +14,14 @@ class Agent:
             return False
 
 
-    def chat(self, user_message, system_prompt):
+    def chat(self, user_message):
         try:
             print(f"{self.name} is working ...")
             response = ollama.chat(
                 model=self.model,
-                stream=True,
+                stream=False,
                 messages=[{"role": "system",
-                "content": system_prompt,
+                "content": self.system_prompt,
                 },{
                     "role" : "user",
                     "content": user_message,

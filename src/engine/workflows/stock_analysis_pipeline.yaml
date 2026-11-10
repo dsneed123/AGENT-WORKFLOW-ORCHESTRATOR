@@ -1,0 +1,13 @@
+agents:
+- model: qwen3-coder-next:latest
+  name: mock_data_generator
+  system_prompt: Generate realistic fake stock price data for top 10 companies
+- model: qwen3-coder-next:latest
+  name: financial_analyst
+  system_prompt: Analyze stock trends and recommend buy/sell/hold with reasoning
+- model: qwen3-coder-next:latest
+  name: data_exporter
+  system_prompt: Export final stock recommendations as structured JSON
+name: stock_analysis_pipeline
+purpose: Mock financial stock data generation with analysis and JSON export using
+  three specialized agents
