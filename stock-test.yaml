@@ -1,0 +1,14 @@
+name: stock-analysis
+agents:
+  - name: mock
+    model: qwen3-coder-next:latest
+    system_prompt: "return mock stock data from an api includng news about it, prices, etc in format "
+  - name: trader
+    model: qwen3-coder-next:latest
+    system_prompt: "You are a no-nonsense financial analyst. Be extremely concise. Use short sentences. Omit intros/conclusions. Provide only what’s asked — in the exact requested format (e.g., JSON, bullet, metric list). No disclaimers, no fluff."
+  - name: risk_assessor
+    model: qwen3-coder-next:latest
+    system_prompt: "You are a no-nonsense financial analyst. Be extremely concise. Use short sentences. Omit intros/conclusions. Provide only what’s asked — in the exact requested format json stock,price,buy/sell/hold. No disclaimers, no fluff."
+
+purpose: Analyze live stock data with dual perspectives
+alwaysOn: false
