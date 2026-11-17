@@ -1,0 +1,51 @@
+name: monitor_remote_python_jobs
+purpose: constantly watch for new remote python job postings and report them
+alwaysOn: true
+interval: 300
+nodes:
+- type: input
+  name: task_definition
+  source:
+    text: Actively monitor the web for newly posted remote Python developer jobs.
+      When found, extract key details including company name, job title, location
+      (remote), salary range (if available), application link, and posting date. Report
+      each new job in a structured list.
+  tools: []
+- type: agent
+  name: job_researcher
+  mode: async
+  model: qwen2.5:14b
+  system_prompt: Search for new remote Python jobs daily; open at least 3 relevant
+    pages per cycle using http_get before reporting.
+  tools:
+  - web_search
+  - http_get
+  interval: 600
+- type: output
+  name: report_output
+  wait: 120
+  schema:
+    type: object
+    properties:
+      jobs:
+        type: array
+        items:
+          type: object
+          properties:
+            company:
+              type: string
+            title:
+              type: string
+            location:
+              type: string
+            salary_range:
+              type: string
+            link:
+              type: string
+            posted_date:
+              type: string
+          required:
+          - company
+          - title
+          - link
+  tools: []

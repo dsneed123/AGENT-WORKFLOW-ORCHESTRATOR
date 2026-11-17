@@ -1,0 +1,12 @@
+name: cron_demo
+purpose: Fires every minute so the daemon can be checked quickly
+schedule: "* * * * *"
+nodes:
+  - type: input
+    name: tick
+    source: text
+    value: '{"rows": [{"id": "tick", "link": "https://example.com/tick"}]}'
+  - type: output
+    name: save
+    sink: csv
+    path: ticks.csv

@@ -1,0 +1,54 @@
+name: watch_remote_python_jobs
+purpose: Watch for new remote Python job postings and report them with verified links
+alwaysOn: true
+interval: 3600
+nodes:
+- type: input
+  name: task_input
+  source: text
+  value: Actively monitor the web for newly posted remote Python developer jobs, collect
+    their details (title, company, location, salary if available), and return a verified
+    list with working links to postings.
+- type: agent
+  name: job_researcher
+  mode: async
+  model: qwen3-coder-next:latest
+  system_prompt: Find new remote Python job listings daily. Use web_search first,
+    then open each promising link with http_get to verify and extract details.
+  tools:
+  - web_search
+  - http_get
+  interval: 600
+- type: agent
+  name: job_verifier_and_formatter
+  model: qwen2.5:14b
+  system_prompt: Extract structured data from verified Python remote job pages. Return
+    only valid records with real links already visited.
+  tools: []
+  schema:
+    type: object
+    properties:
+      jobs:
+        type: array
+        items:
+          type: object
+          required:
+          - title
+          - company
+          - link
+          properties:
+            title:
+              type: string
+            company:
+              type: string
+            location:
+              type: string
+            salary:
+              type: string
+            link:
+              type: string
+    required:
+    - jobs
+- type: output
+  name: job_reporter
+  wait: 120

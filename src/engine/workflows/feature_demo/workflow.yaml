@@ -1,0 +1,29 @@
+name: feature_demo
+purpose: Every node type on one canvas, so the studio can be checked at a glance
+schedule: "*/15 * * * *"
+nodes:
+  - type: input
+    name: seed
+    source: text
+    value: '{"rows": [{"id": "a", "link": "https://example.com/a"}, {"id": "b", "link": "https://example.com/b"}]}'
+  - type: agent
+    name: enricher
+    model: qwen2.5:3b
+    system_prompt: Return the record with a one word note added.
+    tools:
+      - http_get
+      - browser_get
+      - remember
+    map: true
+    parallel: 2
+    when: has_records
+    retry: 1
+    on_error: continue
+  - type: approval
+    name: gate
+    prompt: Send these records onward?
+  - type: output
+    name: board
+    sink: csv
+    path: records.csv
+    dedupe: id

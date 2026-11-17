@@ -1,0 +1,56 @@
+{
+  "workflow": "tools_demo",
+  "started": "2026-11-16 20:54:05",
+  "nodes": [
+    {
+      "name": "brief",
+      "type": "input",
+      "mode": "sync",
+      "ms": 0,
+      "input": "",
+      "output": "Read invoices.csv, add the amounts with calculate, and state today's date from now.",
+      "failed": false
+    },
+    {
+      "name": "clerk",
+      "type": "agent",
+      "mode": "sync",
+      "ms": 18184,
+      "input": "Read invoices.csv, add the amounts with calculate, and state today's date from now.",
+      "output": "The total amount from the invoices is 2400.75 and today's date is 2026-11-16 (Monday).",
+      "failed": false,
+      "model": "qwen2.5:14b",
+      "tool_calls": [
+        {
+          "tool": "read_table",
+          "args": {
+            "path": "invoices.csv"
+          },
+          "result": "invoice,amount\r\nA-1,1420.50\r\nA-2,980.25\r\n"
+        },
+        {
+          "tool": "calculate",
+          "args": {
+            "expression": "(1420.50 + 980.25)"
+          },
+          "result": "2400.75"
+        },
+        {
+          "tool": "now",
+          "args": {},
+          "result": "2026-11-16 20:54:21 PST (Monday)"
+        }
+      ]
+    },
+    {
+      "name": "summary",
+      "type": "output",
+      "mode": "sync",
+      "ms": 0,
+      "input": "The total amount from the invoices is 2400.75 and today's date is 2026-11-16 (Monday).",
+      "output": "The total amount from the invoices is 2400.75 and today's date is 2026-11-16 (Monday).",
+      "failed": false
+    }
+  ],
+  "ms": 18184
+}

@@ -1,0 +1,25 @@
+{
+  "workflow": "cron_demo",
+  "started": "2026-11-16 20:42:32",
+  "nodes": [
+    {
+      "name": "tick",
+      "type": "input",
+      "mode": "sync",
+      "ms": 0,
+      "input": "",
+      "output": "{\"rows\": [{\"id\": \"tick\", \"link\": \"https://example.com/tick\"}]}",
+      "failed": false
+    },
+    {
+      "name": "save",
+      "type": "output",
+      "mode": "sync",
+      "ms": 8,
+      "input": "{\"rows\": [{\"id\": \"tick\", \"link\": \"https://example.com/tick\"}]}",
+      "output": "{\n  \"rows\": [\n    {\n      \"id\": \"tick\",\n      \"link\": \"https://example.com/tick\"\n    }\n  ]\n}",
+      "failed": false
+    }
+  ],
+  "ms": 16
+}

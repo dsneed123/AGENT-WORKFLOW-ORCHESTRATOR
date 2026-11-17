@@ -1,0 +1,9 @@
+agents:
+- export_json: true
+  model: qwen3-coder-next:latest
+  name: list_files_agent
+  system_prompt: List all files and directories in the specified path
+  tools:
+  - list_dir
+name: list_files_to_json
+purpose: List files in a directory and export as JSON

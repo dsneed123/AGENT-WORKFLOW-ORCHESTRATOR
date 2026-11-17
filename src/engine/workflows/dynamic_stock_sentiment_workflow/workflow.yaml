@@ -1,0 +1,21 @@
+agents:
+- export_json: true
+  model: qwen3-coder-next:latest
+  name: stock_researcher
+  system_prompt: Search for trending stocks and recent financial news URLs
+  tools:
+  - web_search
+- export_json: true
+  model: qwen2.5:14b
+  name: news_fetcher
+  system_prompt: Fetch visible text content of each provided URL
+  tools:
+  - http_get
+- export_json: true
+  model: qwen2.5:3b
+  name: sentiment_analyst
+  system_prompt: Analyze stock news for bullish/bearish bias and output ticker + signal
+  tools: []
+name: dynamic_stock_sentiment_workflow
+purpose: Dynamically research stocks, analyze recent news sentiment, and output ticker
+  with bullish/bearish judgment

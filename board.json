@@ -1,0 +1,133 @@
+{
+  "widgets": [
+    {
+      "id": "w1",
+      "kind": "machine",
+      "title": "This machine",
+      "data": {
+        "tiles": [
+          {
+            "label": "cpu",
+            "value": "4.3%",
+            "foot": "load 0.85 on 20 cores"
+          },
+          {
+            "label": "free ram",
+            "value": "110.0GB",
+            "foot": ""
+          },
+          {
+            "label": "gpu",
+            "value": "8%",
+            "foot": "no reading"
+          }
+        ]
+      }
+    },
+    {
+      "id": "w2",
+      "kind": "stat",
+      "title": "Demo records",
+      "workflow": "studio_demo",
+      "metric": "records",
+      "data": {
+        "value": 2,
+        "foot": "last run 2026-11-16 20:40:43"
+      }
+    },
+    {
+      "id": "w3",
+      "kind": "stat",
+      "title": "Demo verified",
+      "workflow": "studio_demo",
+      "metric": "verified",
+      "data": {
+        "value": 1,
+        "foot": "1 unverified",
+        "state": "warn"
+      }
+    },
+    {
+      "id": "w4",
+      "kind": "stat",
+      "title": "Cron runs",
+      "workflow": "cron_demo",
+      "metric": "runs",
+      "data": {
+        "value": 2,
+        "foot": "since 2026-11-16 20:42:32"
+      }
+    },
+    {
+      "id": "w5",
+      "kind": "chart",
+      "title": "Cron run time",
+      "workflow": "cron_demo",
+      "metric": "duration_ms",
+      "data": {
+        "series": [
+          {
+            "label": "20:42",
+            "value": 16
+          },
+          {
+            "label": "20:43",
+            "value": 0
+          }
+        ],
+        "unit": "ms"
+      }
+    },
+    {
+      "id": "w6",
+      "kind": "table",
+      "title": "Latest demo records",
+      "workflow": "studio_demo",
+      "data": {
+        "columns": [
+          "company",
+          "link",
+          "location",
+          "title",
+          "verified"
+        ],
+        "rows": [
+          [
+            "Rivian",
+            "https://example.com/a",
+            "Palo Alto",
+            "Staff Engineer",
+            true
+          ],
+          [
+            "Salesforce",
+            "https://example.com/b",
+            "Seattle",
+            "Backend Engineer",
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "id": "w7",
+      "kind": "log",
+      "title": "Tools used by tools_demo",
+      "workflow": "tools_demo",
+      "data": {
+        "lines": [
+          "clerk -> read_table({\"path\": \"invoices.csv\"})\ninvoice,amount\r\nA-1,1420.50\r\nA-2,980.25\r\n",
+          "clerk -> calculate({\"expression\": \"(1420.50 + 980.25)\"})\n2400.75",
+          "clerk -> now({})\n2026-11-16 20:54:21 PST (Monday)"
+        ]
+      }
+    },
+    {
+      "id": "w1794891776927",
+      "title": "Job watch status",
+      "kind": "stat",
+      "workflow": "tools_demo",
+      "metric": "status"
+    }
+  ]
+}

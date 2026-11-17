@@ -1,0 +1,25 @@
+{
+  "workflow": "studio_demo",
+  "started": "2026-11-16 20:40:43",
+  "nodes": [
+    {
+      "name": "sample",
+      "type": "input",
+      "mode": "sync",
+      "ms": 0,
+      "input": "",
+      "output": "{\"jobs\": [{\"title\": \"Staff Engineer\", \"company\": \"Rivian\", \"location\": \"Palo Alto\", \"link\": \"https://example.com/a\", \"verified\": true}, {\"title\": \"Backend Engineer\", \"company\": \"Salesforce\", \"location\": \"Seattle\", \"link\": \"https://example.com/b\", \"verified\": false}]}",
+      "failed": false
+    },
+    {
+      "name": "board",
+      "type": "output",
+      "mode": "sync",
+      "ms": 0,
+      "input": "{\"jobs\": [{\"title\": \"Staff Engineer\", \"company\": \"Rivian\", \"location\": \"Palo Alto\", \"link\": \"https://example.com/a\", \"verified\": true}, {\"title\": \"Backend Engineer\", \"company\": \"Salesforce\", \"location\": \"Seattle\", \"link\": \"https://example.com/b\", \"verified\": false}]}",
+      "output": "{\n  \"jobs\": [\n    {\n      \"title\": \"Staff Engineer\",\n      \"company\": \"Rivian\",\n      \"location\": \"Palo Alto\",\n      \"link\": \"https://example.com/a\",\n      \"verified\": true\n    },\n    {\n      \"title\": \"Backend Engineer\",\n      \"company\": \"Salesforce\",\n      \"location\": \"Seattle\",\n      \"link\": \"https://example.com/b\",\n      \"verified\": false\n    }\n  ]\n}",
+      "failed": false
+    }
+  ],
+  "ms": 0
+}

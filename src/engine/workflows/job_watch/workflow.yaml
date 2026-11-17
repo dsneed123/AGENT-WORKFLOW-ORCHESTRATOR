@@ -1,0 +1,35 @@
+name: job_watch
+purpose: Keep crawling the web for job openings and print only the ones not seen before
+alwaysOn: true
+interval: 60
+nodes:
+  - type: input
+    name: brief
+    source: text
+    value: "Find software engineer job openings posted in the last week."
+  - type: agent
+    name: scout
+    mode: async
+    interval: 600
+    model: qwen3-coder-next:latest
+    system_prompt: "Step 1: call web_search. Step 2: call http_get on at least three of the links it returned. Step 3: from the fetched page text only, list every job opening as title, company, location, link. Never invent an opening. No openings found means say none."
+    tools:
+      - web_search
+      - http_get
+    schema:
+      type: object
+      properties:
+        openings:
+          type: array
+          items:
+            type: object
+            properties:
+              title: {type: string}
+              company: {type: string}
+              location: {type: string}
+              link: {type: string}
+            required: [title, company, link]
+      required: [openings]
+  - type: output
+    name: postings
+    wait: 120

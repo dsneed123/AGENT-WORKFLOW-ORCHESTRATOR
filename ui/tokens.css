@@ -1,0 +1,367 @@
+/*
+ * simple-fun style tokens — lifted verbatim from AWO Studio ui/src/styles/base.css.
+ * Compose these; never invent a colour, a radius or a step of spacing.
+ * Fonts: self-host IBM Plex Sans 400/500/600, IBM Plex Mono 400/500/600, and
+ * the Archivo VARIABLE build (font-stretch 62%-125%) — the width axis only
+ * exists in the variable file.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* ── Ground ──────────────────────────────────────────────────────────
+     Graph paper: a cool gray-white, deliberately not a warm cream, ruled at
+     28px. `--grid-line` is a token like any other so the ruling can be
+     re-tuned in one place rather than in each surface that draws it. */
+  --paper: #eef0f3;
+  --grid-line: #d6dae1;
+  --grid-step: 28px;
+
+  /* ── Surfaces ────────────────────────────────────────────────────────
+     Four depths. On paper the direction inverts from a dark interface: a
+     panel sits ABOVE the ground by being whiter, and a pressed control sinks
+     by taking on the ground's gray. */
+  --bg: var(--paper);
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-hover: #e7eaef;
+  --surface-active: #d9dee6;
+  --surface-overlay: #ffffff;
+  --scrim: rgb(20 24 31 / 32%);
+
+  /* ── Ink ─────────────────────────────────────────────────────────────
+     Near-black with a blue cast. Text, hard borders and the inverted code
+     blocks are all the same ink — that single value is what makes the
+     interface read as printed rather than rendered. */
+  --ink: #14181f;
+
+  /* ── Lines ───────────────────────────────────────────────────────────
+     Two registers, and the difference matters on paper. `--line`/`--line-faint`
+     are ruling: quiet gray, for dividing rows inside something. `--line-strong`
+     is INK: the hard edge of a card, an input, a printed box. Using ink for
+     everything would turn the page into a wireframe. */
+  --line-faint: #e4e7ec;
+  --line: #c9cfd8;
+  --line-strong: var(--ink);
+
+  /* ── Text ────────────────────────────────────────────────────────────
+     Three weights of voice. Tertiary is for text that must be legible but
+     never read first — units, counts, placeholder help. */
+  --text: var(--ink);
+  --text-secondary: #47505e;
+  --text-tertiary: #6b7482;
+  /*
+    Ink ON the accent, not white.
+
+    White on #e8541a measures 3.7:1, which fails WCAG AA for body text — and
+    the accent's whole job is the primary button, which is text on a filled
+    background. Ink measures 4.9:1. It also happens to be the right idiom:
+    black on orange is the hazard-label pairing this kind of document uses.
+  */
+  --text-on-accent: var(--ink);
+
+  /* ── Accent ──────────────────────────────────────────────────────────
+     Oscilloscope-trace orange. One accent, used sparingly: the single primary
+     action in a region, the live trace, the focus ring, the square bullet.
+     When everything is accented nothing is. */
+  --accent: #e8541a;
+  --accent-hover: #cf4712;
+  --accent-active: #b03c0e;
+  --accent-soft: rgb(232 84 26 / 12%);
+  --accent-line: rgb(232 84 26 / 45%);
+
+  /* ── Status ──────────────────────────────────────────────────────────
+     Meaning, never decoration, and dark enough to read on white — the
+     opposite constraint from a dark interface, where the danger is a colour
+     too dim. --stopped reads as deliberate (a cancel is not a failure);
+     --skip reads as inert. */
+  --ok: #1a7f4b;
+  --ok-soft: rgb(26 127 75 / 12%);
+  --warn: #9a5b00;
+  --warn-soft: rgb(154 91 0 / 12%);
+  --err: #c22a1b;
+  --err-soft: rgb(194 42 27 / 12%);
+  --skip: #6b7482;
+  --stopped: #47505e;
+
+  /* ── Inverted blocks ─────────────────────────────────────────────────
+     Machine output — a YAML preview, a diff, a streamed agent log — is set in
+     ink-on-paper reversed: the datasheet's black panel. It is the one place
+     the page goes dark, and that is what marks the text as a transcript
+     rather than as something the interface wrote. */
+  --invert-bg: var(--ink);
+  --invert-text: #dfe3ea;
+  --invert-line: #333b47;
+
+  /* ── Signal ──────────────────────────────────────────────────────────
+     The two secondaries the datasheet uses for measured quantities, kept
+     apart from `--accent` (which is the live trace) and from `--ok`/`--err`
+     (which are verdicts). A bar showing what something COST is not a verdict
+     about it. */
+  --signal-blue: #1258c4;
+  --signal-green: #1a7f4b;
+
+  /* ── Node kinds ──────────────────────────────────────────────────────
+     Identification, not emphasis: a 2px spine on a card and a dot in the
+     palette. Re-darkened for paper — the dark theme's values were chosen to
+     glow on near-black and would wash out here. */
+  --kind-trigger: #6b3fc4;
+  --kind-extract: #1258c4;
+  --kind-reason: #9a5b00;
+  --kind-research: #3b49b8;
+  --kind-fetch: #0f6aa8;
+  --kind-transform: #806011;
+  --kind-store: #8a4d12;
+  --kind-condition: #1a7f4b;
+  --kind-loop: #0e6f7a;
+  --kind-delay: #5a6478;
+  --kind-action: #b02a6e;
+  --kind-command: #2f7a46;
+  --kind-develop: #b8480f;
+  --kind-approval: #7a4bc4;
+  --kind-git: #47505e;
+  --kind-file: #47505e;
+
+  /* ── Type ────────────────────────────────────────────────────────────
+     Three faces, each with a job. Display is the stretched industrial
+     Archivo used for headings only; body is Plex Sans; every machine-produced
+     string — ids, statuses, logs, counts, labels — is Plex Mono, which is
+     what makes data legible as data. */
+  --font-display:
+    "Archivo", "Archivo Expanded", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-sans:
+    "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Noto Sans", sans-serif;
+  --font-mono:
+    "IBM Plex Mono", ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
+
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  /* The stat scale: a headline number is the thing a dashboard is FOR, and at
+     20px it read as body text in a box. One token, so the rundown tiles and a
+     board's own metric widget are the same size by construction. */
+  --text-stat: clamp(28px, 2.6vw, 38px);
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.45;
+  --leading-relaxed: 1.6;
+
+  --tracking-wide: 0.06em;
+  --tracking-wider: 0.08em;
+  /* Utility text is set wide — the datasheet register for a label. */
+  --tracking-widest: 0.14em;
+
+  /* ── Space ───────────────────────────────────────────────────────────
+     A 4px grid with two half-steps for dense chrome. */
+  --space-0: 0;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 24px;
+  --space-9: 32px;
+  --space-10: 40px;
+
+  /* ── Radius ──────────────────────────────────────────────────────────
+     Near-square. A printed box has corners; the 2px is only there to stop
+     the ink corners looking chipped on a hairline border. */
+  --radius-sm: 0;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 3px;
+  --radius-pill: 999px;
+
+  /* ── Elevation ───────────────────────────────────────────────────────
+     Hard offset shadows: solid ink, no blur. A blurred shadow says "floating
+     above a surface"; a hard one says "printed, with a second impression
+     offset behind it", which is the whole feel this borrows. */
+  --shadow-sm: 3px 3px 0 var(--ink);
+  --shadow-md: 5px 5px 0 var(--ink);
+  --shadow-lg: 5px 5px 0 var(--ink);
+  /* For the same effect where ink would be too heavy — small chips, rows. */
+  --shadow-soft: 2px 2px 0 var(--line);
+
+  /* ── Motion ──────────────────────────────────────────────────────────
+     Short and flat. Anything longer than 160ms on a canvas tool reads as
+     lag rather than polish. */
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+  --duration-fast: 90ms;
+  --duration-base: 140ms;
+  /* Only for changes the eye should follow across the canvas, like an edge
+     repainting itself along the path a run took. */
+  --duration-slow: 240ms;
+
+  /* ── Controls ────────────────────────────────────────────────────── */
+  --control-height: 30px;
+  --control-height-sm: 24px;
+  /* A box that takes a two- or three-digit number — an interval, a count — so
+     it is sized for what it holds rather than stretched to the panel. A
+     full-width box beside a unit picker invites a value belonging in the unit. */
+  --control-width-num: 6.5ch;
+
+  /* ── Measure ─────────────────────────────────────────────────────────
+     How wide a run of prose may get. The panels here are sometimes very wide,
+     and a sentence set across all of it is read by moving your head. Two
+     values, because the two cases are different lengths: a paragraph that is
+     the point of its region, and a note sitting beside a control. */
+  --measure: 62ch;
+  --measure-note: 34ch;
+
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  color: var(--text);
+}
+
+/*
+  The graph paper.
+
+  Two layered gradients rather than an image: it is one line of CSS to retune
+  the ruling, it scales at any zoom without a second asset, and it costs no
+  request. `background-attachment: fixed` is deliberate — the paper is the
+  page, not a texture that slides around under the panels, and a grid that
+  scrolled with the content would read as a moving background rather than as
+  the sheet the interface is printed on.
+*/
+body,
+.graph-paper {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: var(--grid-step) var(--grid-step);
+  background-attachment: fixed;
+}
+
+/* One focus ring, for everything focusable. */
+:where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+/* Respect a system preference for less movement: every transition and pulse
+   becomes instant rather than merely shorter. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Primitives: the small-caps label, the display face, the square bullet. */
+.eyebrow {
+  /* The datasheet register for a label: mono, uppercase, set wide. Every
+     small label in the product is one of these, which is why it is worth
+     one definition — the tracking had already drifted between two values
+     before it existed. */
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+}
+
+/*
+  The display face: Archivo stretched to 125% width, heavy, uppercase, set
+  tight. This is the industrial spec-sheet heading, and it is a CLASS rather
+  than a rule on `h1` on purpose — a heading is not always a display line
+  (a modal title is, a field group's label is not), and letting the element
+  decide would put stretched uppercase in places that only need a name.
+*/
+.display {
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.015em;
+  line-height: var(--leading-tight);
+  color: var(--text);
+}
+
+/*
+  Doc-control framing: the line a spec sheet carries at its head — document
+  id, revision, classification. Decoration in the sense that no behaviour
+  depends on it, and not decoration in the sense that it is what tells you
+  you are reading a controlled document rather than a web page.
+*/
+.doc-control {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* A figure caption, under a diagram. Same register, ink-ruled above. */
+.figure-caption {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+  margin: var(--space-5) 0 0;
+}
+
+/*
+  Square bullets, outlined in the accent.
+
+  A round dot is the web's bullet; an outlined square is the parts-list
+  bullet, and it is drawn as a `::before` rather than a `list-style-type`
+  because no list marker can be given a colour independent of its text.
+*/
+.spec-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.spec-list > li {
+  position: relative;
+  padding-left: var(--space-6);
+}
+
+.spec-list > li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  /* Optically centred on the first line rather than on the box: a marker
+     aligned to the box drifts down as an item wraps. */
+  top: 0.45em;
+  width: 6px;
+  height: 6px;
+  border: 1.5px solid var(--accent);
+}

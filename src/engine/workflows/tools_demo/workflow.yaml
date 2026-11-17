@@ -1,0 +1,20 @@
+name: tools_demo
+purpose: Prove an agent can read a local spreadsheet, do exact arithmetic and date it
+nodes:
+  - type: input
+    name: brief
+    source: text
+    value: "Read invoices.csv, add the amounts with calculate, and state today's date from now."
+  - type: agent
+    name: clerk
+    model: qwen2.5:14b
+    system_prompt: Use read_table, then calculate, then now. Report the total and the date.
+    require_tools:
+      - read_table
+      - calculate
+    tools:
+      - read_table
+      - calculate
+      - now
+  - type: output
+    name: summary

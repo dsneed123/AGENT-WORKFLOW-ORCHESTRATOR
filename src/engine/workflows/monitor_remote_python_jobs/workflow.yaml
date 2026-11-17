@@ -1,0 +1,60 @@
+name: monitor_remote_python_jobs
+purpose: Continuously scan for new remote Python job postings and report them
+alwaysOn: true
+interval: 300
+nodes:
+- type: input
+  name: task_definition
+  source: text
+  value: Constantly watch for new remote Python job postings on major job boards (e.g.,
+    LinkedIn, Indeed, Glassdoor) and report new ones with title, company, location,
+    salary, posting date, and application link.
+  tools: []
+- type: agent
+  name: job_monitor_agent
+  mode: async
+  model: qwen2.5:14b
+  system_prompt: Find new remote Python jobs from recent postings on major boards
+    using web_search first, then verify each listing with http_get.
+  tools:
+  - web_search
+  - http_get
+  interval: 600
+- type: output
+  name: report_results
+  wait: 120
+  tools: []
+schema:
+  type: object
+  required:
+  - records
+  properties:
+    records:
+      type: array
+      items:
+        type: object
+        required:
+        - title
+        - company
+        - location
+        - salary
+        - posting_date
+        - link
+        - verified
+        properties:
+          title:
+            type: string
+          company:
+            type: string
+          location:
+            type: string
+          salary:
+            type: string
+          posting_date:
+            type: string
+            format: date
+          link:
+            type: string
+            pattern: ^https?://
+          verified:
+            type: boolean

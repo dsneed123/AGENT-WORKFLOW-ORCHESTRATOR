@@ -1,0 +1,10 @@
+name: studio_demo
+purpose: Fixed records so the dashboard can be checked without waiting on a model
+nodes:
+  - type: input
+    name: sample
+    source: text
+    value: '{"jobs": [{"title": "Staff Engineer", "company": "Rivian", "location": "Palo Alto", "link": "https://example.com/a", "verified": true}, {"title": "Backend Engineer", "company": "Salesforce", "location": "Seattle", "link": "https://example.com/b", "verified": false}]}'
+  - type: output
+    name: board
+    dedupe: link
