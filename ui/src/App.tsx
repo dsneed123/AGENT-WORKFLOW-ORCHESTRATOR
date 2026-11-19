@@ -4,12 +4,19 @@ import Inspector from "./components/Inspector";
 import Canvas from "./components/Canvas";
 import Chat from "./components/Chat";
 import Dashboards from "./components/Dashboards";
+import Connect from "./components/Connect";
 import { Collapse, Flow, Grid, Moon, Sun } from "./components/Icons";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "./store";
 import { connect, disconnect } from "./stream";
+import { apiBase, apiToken, boot, check } from "./api";
 
 type Route = "workspace" | "dashboards";
+
+const hostLabel = (base: string) => {
+  if (!base) return "this machine";
+  try { return new URL(base).host; } catch { return base; }
+};
 
 const routeOf = (path: string): Route => (path.startsWith("/dashboards") ? "dashboards" : "workspace");
 
@@ -38,6 +45,9 @@ function Resizer({ side }: { side: "left" | "right" }) {
 }
 
 export default function App() {
+  // The backend may be on another machine. Find out where before asking it anything.
+  const [gate, setGate] = useState<"checking" | "connect" | "ready">("checking");
+  const [reason, setReason] = useState("");
   const [route, setRoute] = useState<Route>(routeOf(location.pathname));
   const [narrow, setNarrow] = useState(window.innerWidth < 1200);
   const { folder, panels, theme, run } = useStore(useShallow((s) => ({
@@ -48,7 +58,20 @@ export default function App() {
   const togglePanel = useStore((s) => s.togglePanel);
   const loadDash = useStore((s) => s.loadDash);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void (async () => {
+      await boot();
+      const failed = await check(apiBase(), apiToken());
+      // First run on a static host: nothing is configured yet, so the probe failing is
+      // not an error to shout about — just ask where the engine is.
+      setReason(apiBase() ? failed || "" : "");
+      setGate(failed ? "connect" : "ready");
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (gate === "ready") void load();
+  }, [gate, load]);
 
   useEffect(() => {
     const onPop = () => setRoute(routeOf(location.pathname));
@@ -62,14 +85,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!folder) return;
+    if (gate !== "ready" || !folder) return;
     connect(folder);
     return () => disconnect();
-  }, [folder]);
+  }, [gate, folder]);
 
   useEffect(() => {
-    if (route === "dashboards") void loadDash();
-  }, [route, loadDash]);
+    if (gate === "ready" && route === "dashboards") void loadDash();
+  }, [gate, route, loadDash]);
 
   const go = (next: Route) => {
     history.pushState({}, "", next === "dashboards" ? "/dashboards" : "/");
@@ -97,6 +120,11 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [busy]);
 
+  if (gate === "checking") return <p className="loading">Looking for the studio…</p>;
+  if (gate === "connect") {
+    return <Connect reason={reason} onConnected={() => { setReason(""); setGate("ready"); }} />;
+  }
+
   return (
     <div className="app">
       <header className="topbar">
@@ -121,6 +149,10 @@ export default function App() {
                       onClick={() => togglePanel("right")}><Collapse side="right" /></button>
             </>
           )}
+          <button className="btn ghost small mono" title="Change the studio this page talks to"
+                  onClick={() => { setReason(""); setGate("connect"); }}>
+            {hostLabel(apiBase())}
+          </button>
           <button className="btn ghost icon" title="Light or dark"
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {theme === "dark" ? <Sun /> : <Moon />}
