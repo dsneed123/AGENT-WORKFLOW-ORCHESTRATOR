@@ -33,6 +33,16 @@ def show():
         print(f"{OR}┃{O}")
     print(f"{OR}┗━{O} {GR}run <n>  ·  new  ·  ui [port]  ·  q{O}\n")
 
+def launch_ui(port=8740):
+    """Serve the studio and open it in a browser."""
+    import studio
+    url = f"http://127.0.0.1:{port}"
+    print(f"\n{OR}▸ studio at {url}{O}  {GR}ctrl-c to stop{O}\n")
+    threading.Timer(1.0, webbrowser.open, (url,)).start()
+    studio.serve(port=port)
+    print(f"{GR}studio stopped{O}")
+
+
 def main():
     while True:
         show()
@@ -52,13 +62,7 @@ def main():
             else:
                 print(f"{OR}no workflow {i}{O}")
         elif parts[0] == "ui":
-            import studio
-            port = int(parts[1]) if len(parts) == 2 and parts[1].isdigit() else 8740
-            url = f"http://127.0.0.1:{port}"
-            print(f"\n{OR}▸ studio at {url}{O}  {GR}ctrl-c to come back here{O}\n")
-            threading.Timer(1.0, webbrowser.open, (url,)).start()
-            studio.serve(port=port)
-            print(f"{GR}studio stopped{O}")
+            launch_ui(int(parts[1]) if len(parts) == 2 and parts[1].isdigit() else 8740)
         elif parts[0] == "new":
             goal = parts[1] if len(parts) == 2 else input(f"{GR}goal:{O} ")
             print(f"{GR}building ...{O}")
@@ -67,4 +71,7 @@ def main():
             print(f"{GR}run <n> | new [goal] | ui [port] | q{O}")
 
 if __name__ == "__main__":
-    main()
+    args = sys.argv[1:]
+    if args and args[0] in ("cli", "menu"):
+        sys.exit(main())
+    launch_ui(int(args[0]) if args and args[0].isdigit() else 8740)
