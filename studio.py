@@ -385,15 +385,27 @@ class Studio(BaseHTTPRequestHandler):
         self._send({"error": "not found"}, code=404)
 
 
-if __name__ == "__main__":
-    args = sys.argv[1:]
-    port = int(args[0]) if args and args[0].isdigit() else 8740
-    host = args[args.index("--host") + 1] if "--host" in args else "127.0.0.1"
-    if "--token" in args:
-        TOKEN = args[args.index("--token") + 1]
+def serve(port=8740, host="127.0.0.1", token=""):
+    """Serve the studio until ctrl-c, then release the port so a caller can keep going."""
+    global TOKEN
+    if token:
+        TOKEN = token
     if host not in ("127.0.0.1", "localhost", "::1") and not TOKEN:
         TOKEN = secrets.token_urlsafe(24)
         print(f"listening past this machine, so a token is required. Generated one:\n\n    {TOKEN}\n\n"
               f"Set AWO_TOKEN to keep the same one across restarts.")
+    httpd = ThreadingHTTPServer((host, port), Studio)
     print(f"studio on http://{host}:{port}" + ("  (token required)" if TOKEN else ""))
-    ThreadingHTTPServer((host, port), Studio).serve_forever()
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        httpd.server_close()
+
+
+if __name__ == "__main__":
+    args = sys.argv[1:]
+    serve(port=int(args[0]) if args and args[0].isdigit() else 8740,
+          host=args[args.index("--host") + 1] if "--host" in args else "127.0.0.1",
+          token=args[args.index("--token") + 1] if "--token" in args else "")
