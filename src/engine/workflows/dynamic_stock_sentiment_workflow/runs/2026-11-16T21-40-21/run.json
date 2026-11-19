@@ -1,0 +1,125 @@
+{
+  "workflow": "dynamic_stock_sentiment_workflow",
+  "started": "2026-11-16 21:40:21",
+  "nodes": [
+    {
+      "name": "stock_researcher",
+      "type": "agent",
+      "mode": "sync",
+      "ms": 48802,
+      "input": "",
+      "output": "error: tool loop limit reached",
+      "failed": true,
+      "model": "qwen3-coder-next:latest",
+      "tool_calls": [
+        {
+          "tool": "web_search",
+          "args": {
+            "query": "trending stocks and recent financial news"
+          },
+          "result": "Top Trending Stocks: US stocks with the highest interest today - Yahoo ... - https://finance.yahoo.com/markets/stocks/trending/\nUS Stocks: Trending News, Latest Updates, Analysis - https://www.bloomberg.com/latest/us-stocks\nGlobal Market Headlines | Breaking Stock Market News | Reuters - https://www.reuters.com/markets/\nToday&#x27;s Top Trending Stocks - StockAnalysis.com - https://stockanalysis.com/trending/\nStock Market News, Stock Quotes and Rankings, Stock Screener and ... - https://www.benzinga.com/markets\nTrending Stocks | MarketBeat - https://www.marketbeat.com/stocks/trending/\nYahoo Finance - Stock Market Live, Quotes, Business &amp; Finance News - https://finance.yahoo.com/\nStocks and Investing - The Latest Stocks and Market Data. Get Updates ... - https://www.wsj.com/finance/stocks"
+        },
+        {
+          "tool": "web_search",
+          "args": {
+            "query": "top trending stocks today"
+          },
+          "result": "Trending Stocks Today - Yahoo Finance - https://finance.yahoo.com/markets/stocks/trending/heatmap/\nMost Active US Stocks \u2014 TradingView - https://www.tradingview.com/markets/stocks-usa/market-movers-active/\nTrending Stocks - Investing.com - https://www.investing.com/equities/trending-stocks\nStrong Momentum US Stocks (2026) - Top Trending Stocks - https://www.chartmill.com/stock/markets/usa/screener/strong-momentum-stocks\nTop Gaining US Stocks \u2014 TradingView - https://www.tradingview.com/markets/stocks-usa/market-movers-gainers/\nTop trending stocks: US stocks with the highest interest today - Yahoo ... - https://uk.finance.yahoo.com/markets/stocks/trending/\nMost Active Stocks Today by Trading Volume | TipRanks - https://www.tipranks.com/markets/most-active-stocks\nThe 10 Best Companies to Invest in Now - Morningstar - https://www.morningstar.com/stocks/10-best-companies-invest-now"
+        },
+        {
+          "tool": "web_search",
+          "args": {
+            "query": "recent financial news headlines"
+          },
+          "result": "Latest Finance News | Today&#x27;s Top Headlines | Reuters - https://www.reuters.com/business/finance/\nFinance News - CNBC - https://www.cnbc.com/finance/\nGoogle News - Finance - Latest - https://news.google.com/topics/CAAqIQgKIhtDQkFTRGdvSUwyMHZNREpmTjNRU0FtVnVLQUFQAQ\nLatest News - CNBC - https://www.cnbc.com/latest/\nLatest Headlines - The Wall Street Journal - https://www.wsj.com/news/latest-headlines\nFinance News: Wall Street, financial markets, stocks, securities and ... - https://finance.yahoo.com/news/\nTop Financial Headlines Today \u2014 Live Market News | Finobird - https://finobird.com/headlines/\nLatest financial, market &amp; economic news - Economies.com - https://www.economies.com/latest-news"
+        },
+        {
+          "tool": "web_search",
+          "args": {
+            "query": "breaking stock market news today"
+          },
+          "result": "Stock Market Headlines | Breaking Stock Market News | Reuters - https://www.reuters.com/markets/stocks/\nMarketWatch: Stock Market News - Financial News - https://www.marketwatch.com/\nStock Market News - CNBC - https://www.cnbc.com/stocks/\nStock market today: Dow plunges 1,800 points, Nasdaq enters correction ... - https://finance.yahoo.com/markets/live/stock-market-today-thursday-november-5-dow-sp-500-nasdaq-plunge-chip-stocks-melt-down-193726491.html\nToday&#x27;s Stock Market News and Breaking Stories - https://stockanalysis.com/news/\nU.S. Stock Market Headlines | Breaking Stock Market News | Reuters - https://www.reuters.com/markets/us/\nU.S. Stock Market Today - Fox Business - https://www.foxbusiness.com/stocks\nStock Market Today: Stock Market News And Analysis - https://www.investors.com/news/stock-market-today-stock-market-news/"
+        },
+        {
+          "tool": "web_search",
+          "args": {
+            "query": "CNN business and finance news today"
+          },
+          "result": "Business News - Latest Headlines on CNN Business | CNN Business - https://www.cnn.com/business\nStock Market Data - US Markets, World Markets, and Stock Quotes | CNN - https://www.cnn.com/markets\nStock Markets, Business News, Financials, Earnings - CNBC - https://www.cnbc.com/\nBreaking News, Latest News and Videos | CNN - https://us.cnn.com/\nLatest News - CNN International Commercial - https://commercial.cnn.com/latest-news/\nBusiness News Live, Share Market News - Read Latest Finance News, IPO ... - https://economictimes.indiatimes.com/\nBusiness News - Latest Finance &amp; Business News - CCN.com - https://www.ccn.com/news/business/"
+        },
+        {
+          "tool": "web_search",
+          "args": {
+            "query": "financial news from major outlets today"
+          },
+          "result": "Latest Market Headlines | Morningstar - https://www.morningstar.com/news\nMoneyWatch: Financial news, world finance and market news, your money ... - https://www.cbsnews.com/moneywatch/\nEconomic News - CNBC - https://www.cnbc.com/economy/\nBloomberg - Business News, Stock Markets, Finance, Breaking &amp; World News - https://www.bloomberg.com/"
+        },
+        {
+          "tool": "web_search",
+          "args": {
+            "query": "stock market today news summary"
+          },
+          "result": "Today&#x27;s Market Summary | Vanguard - https://investor.vanguard.com/investor-resources-education/education/market-summary\nStock Market News Today | Edward Jones - https://www.edwardjones.com/us-en/market-news-insights/stock-market-news/daily-market-recap\nMarket Data - The Wall Street Journal - https://www.wsj.com/market-data\nU.S. Market Data - MarketWatch - https://www.marketwatch.com/market-data/us"
+        },
+        {
+          "tool": "web_search",
+          "args": {
+            "query": "CNN stock market update today"
+          },
+          "result": "Pre-market Stock Trading | CNN - https://www.cnn.com/markets/premarkets\nStock market today: Latest news | CNN Business - https://www.cnn.com/business/live-news/stock-market-news-today/\nMarkets Now | CNN Business - https://www.cnn.com/business/markets-now\nMarkets: Indexes, Bonds, Forex, Key Commodities, ETFs - CNBC - https://www.cnbc.com/markets/\nStock market news today: Dow and S&amp;P 500 updates | CNN Business - https://www.cnn.com/business/live-news/stocks-market-today-inflation-cpi\nDow Jones INDEX TODAY | DJIA LIVE TICKER | Dow Jones QUOTE &amp; CHART ... - https://markets.businessinsider.com/index/dow_jones?op=1\nStock market news: Live updates | CNN Business - https://www.cnn.com/business/live-news/stock-market-today-gdp-ecb-mortgage-rates"
+        },
+        {
+          "tool": "web_search",
+          "args": {
+            "query": "Bloomberg stock market summary today"
+          },
+          "result": "Markets - Bloomberg - https://www.bloomberg.com/markets\nStocks - Bloomberg - Bloomberg Markets - https://www.bloomberg.com/markets/stocks\nStock Market Today: Dow, S&amp;P Live Updates for November 17 - Bloomberg - https://www.bloomberg.com/latest/markets-wrap\nAmerican Stocks - Bloomberg - Bloomberg Markets - https://www.bloomberg.com/markets/stocks/world-indexes/americas\nDow Jones - Stock Price, Charts and News Today - BNN Bloomberg - https://www.bnnbloomberg.ca/markets/dow-jones/\nTSX - Stock Price, Charts and News Today - BNN Bloomberg - https://www.bnnbloomberg.ca/markets/tsx/\nStock Market Today: Dow, S&amp;P Live Updates for September 23 - Bloomberg - https://www.bloomberg.com/news/articles/2026-09-22/stock-market-today-dow-s-p-live-updates\nDow Jones Industrial Average (DJIA) Index Price Today - The Wall Street ... - https://www.wsj.com/market-data/index/djia"
+        },
+        {
+          "tool": "web_search",
+          "args": {
+            "query": "Reuters financial news today summary"
+          },
+          "result": "Reuters | Breaking International News &amp; Views - https://www.reuters.com/\nBusiness News | Today&#x27;s International Headlines | Reuters - https://www.reuters.com/business/\nEcon World | News Reshaping The Global Economy | Reuters - https://www.reuters.com/markets/econ-world/\nTop Financial and Investing News from Reuters \u2014 TradingView - https://www.tradingview.com/news/providers/reuters/\nGoogle News - Reuters - Latest - https://news.google.com/topics/CAAqIQgKIhtDQkFTRGdvSUwyMHZNSEJ6TlRNU0FuSjFLQUFQAQ?hl=en-US&amp;ceid=US:en\nFT live news | Financial Times - https://www.ft.com/ft-live-news\nWhat Is Reuters? Global News and Financial Information Provider - https://www.investopedia.com/terms/r/reuters.asp\nGlobal Market Headlines | Breaking Stock Market News | Reuters - https://www.reuters.com/markets/news/"
+        },
+        {
+          "tool": "web_search",
+          "args": {
+            "query": "Wall Street Journal stock market summary today"
+          },
+          "result": "U.S. STOCKS - The Wall Street Journal - https://www.wsj.com/market-data/stocks\nU.S. Market Analysis &amp; Valuation - Dow, Nasdaq, S&amp;P 500 - Simply Wall St - https://simplywall.st/markets/us\nMarkets Charts - WSJ.com - https://graphics.wsj.com/markets-dailies-us-open/\nWall Street - CNBC - https://www.cnbc.com/wall-street/\nMarket Today \u2014 WallStreet.AI | Live Market Summary &amp; Top Movers - https://wallstreet.ai/market-today\nDow Jones Industrial Average Advanced Charts - MarketWatch - https://www.marketwatch.com/investing/index/djia/charts\nThe Wall Street Journal - Breaking News, Business, Financial &amp; Economic ... - https://www.wsj.com/\nDow Jones Industrial Average - The Wall Street Journal - https://www.wsj.com/market-data/quotes/index/DJIA"
+        },
+        {
+          "tool": "web_search",
+          "args": {
+            "query": "CNBC stock market news today"
+          },
+          "result": "today - https://www.cnbc.com/today/\nCNBC Latest Video News &amp; Clips - https://www.cnbc.com/latest-video/\nUS Market - https://www.cnbc.com/us-market/\nStock Market News Today: Share Market, Sensex, Nifty, BSE/NSE Live ... - https://www.cnbctv18.com/market/\nCNBC Television - YouTube - https://www.youtube.com/cnbctelevision\nStock Quotes, Business News and Data from Stock Markets | MSN Money - https://www.msn.com/en-us/money?feed=CNBC&amp;id=a6qja2"
+        }
+      ]
+    },
+    {
+      "name": "news_fetcher",
+      "type": "agent",
+      "mode": "sync",
+      "ms": 5802,
+      "input": "error: tool loop limit reached",
+      "output": "{\"error\": \"tool loop limit reached\"}",
+      "failed": false,
+      "model": "qwen2.5:14b",
+      "tool_calls": []
+    },
+    {
+      "name": "sentiment_analyst",
+      "type": "agent",
+      "mode": "sync",
+      "ms": 2435,
+      "input": "{\"error\": \"tool loop limit reached\"}",
+      "output": "{\"result\": \"tool_loop_limit_reached\"}",
+      "failed": false,
+      "model": "qwen2.5:3b",
+      "tool_calls": []
+    }
+  ],
+  "ms": 57040
+}

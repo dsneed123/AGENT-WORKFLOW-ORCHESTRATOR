@@ -1,0 +1,31 @@
+{
+  "workflow": "job_watch",
+  "started": "2026-11-16 21:43:06",
+  "nodes": [
+    {
+      "name": "brief",
+      "type": "input",
+      "mode": "sync",
+      "ms": 0,
+      "input": "",
+      "output": "Find software engineer job openings posted in the last week.",
+      "failed": false
+    },
+    {
+      "name": "scout",
+      "type": "agent",
+      "mode": "async",
+      "note": "running in its own thread"
+    },
+    {
+      "name": "postings",
+      "type": "output",
+      "mode": "sync",
+      "ms": 0,
+      "input": "{\n  \"openings\": []\n}",
+      "output": "{\n  \"openings\": []\n}",
+      "failed": false
+    }
+  ],
+  "ms": 18554
+}

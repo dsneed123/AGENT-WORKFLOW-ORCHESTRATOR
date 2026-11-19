@@ -128,6 +128,13 @@
       "kind": "stat",
       "workflow": "tools_demo",
       "metric": "status"
+    },
+    {
+      "id": "m-ui_probe-score",
+      "kind": "stat",
+      "title": "Avg Score",
+      "workflow": "ui_probe",
+      "field": "score"
     }
   ]
 }

@@ -13,10 +13,12 @@ DANGEROUS = re.compile(
 
 POLICIES = {}
 _current = threading.local()
-DEFAULT = {"roots": [], "shell": False, "private_net": False, "email": False, "dir": None}
+DEFAULT = {"roots": [], "shell": False, "private_net": False, "email": False, "dir": None,
+           "dry": False}
 
 
-def use_dir(path, allow_paths=(), allow_shell=False, allow_private_network=False, allow_email=False):
+def use_dir(path, allow_paths=(), allow_shell=False, allow_private_network=False, allow_email=False,
+            dry_run=False):
     """Point the guards at one workflow. Every thread that runs its tools must call this."""
     _current.dir = path
     POLICIES[path] = {
@@ -25,12 +27,23 @@ def use_dir(path, allow_paths=(), allow_shell=False, allow_private_network=False
         "private_net": bool(allow_private_network),
         "email": bool(allow_email),
         "dir": path,
+        "dry": bool(dry_run),
     }
 
 
 def policy():
     path = getattr(_current, "dir", None)
     return POLICIES.get(path, DEFAULT)
+
+
+def dry_run():
+    """True on a test run: reads are real, anything that writes or sends is mocked."""
+    return bool(policy().get("dry"))
+
+
+def mocked(what):
+    """The one line every mocked tool hands back, so a test run is never mistaken for a real one."""
+    return f"[TEST] would {what}. Nothing was sent or written."
 
 
 def resolve(path):

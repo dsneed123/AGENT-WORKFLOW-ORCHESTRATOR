@@ -117,7 +117,9 @@ W.Workflow(folder3).run()
 rec3 = json.load(open(os.path.join(folder3, "runs", os.listdir(os.path.join(folder3, "runs"))[0], "run.json")))
 check("failed node flagged", rec3["nodes"][0]["failed"], True)
 check("chain stopped", rec3.get("stopped_at"), "bad")
-check("later nodes not run", len(rec3["nodes"]), 1)
+check("later nodes marked cancelled", [n.get("status") for n in rec3["nodes"]],
+      ["failed", "cancelled", "cancelled"])
+check("cancelled nodes ran nothing", [n.get("ms") for n in rec3["nodes"][1:]], [None, None])
 
 folder4 = make({"name": "retry", "nodes": [
     {"type": "input", "name": "bad", "source": "file", "path": "/no/such/file", "retry": 2},
@@ -140,6 +142,15 @@ check("real record verified", out["jobs"][0]["verified"], True)
 check("misquote caught", out["jobs"][1]["evidence"], "quote is not on that page")
 check("invented link caught", out["jobs"][2]["evidence"], "link was never visited")
 check("missing quote caught", out["jobs"][3]["evidence"], "no quote to check against the page")
+research.state()["fetched"][research.key("https://site.test/curly")] = None
+research.state()["text"][research.key("https://site.test/curly")] = (
+    "\u201cthe world as we have created it\u201d is a process of our thinking \u2014 einstein")
+curly = json.loads(W.verify_records(json.dumps({"rows": [
+    {"link": "https://site.test/curly", "quote": '"The world as we have created it"'},
+    {"link": "https://site.test/curly", "quote": "is a process of our thinking - Einstein"}]})))
+check("a straight quote matches a page that uses curly ones", curly["rows"][0]["verified"], True)
+check("a typed dash matches an em dash on the page", curly["rows"][1]["verified"], True)
+
 strict = json.loads(W.verify_records(payload, strict=True))
 check("strict keeps only verified", [r["title"] for r in strict["jobs"]], ["real"])
 
@@ -395,6 +406,274 @@ research.use_dir(b)
 check("second workflow starts empty", len(research.state()["offered"]), 0)
 research.use_dir(a)
 check("first workflow kept its memory", len(research.state()["offered"]), 1)
+
+print("typed payloads between nodes")
+from pydantic import ValidationError  # noqa: E402
+import models as M  # noqa: E402
+
+p = M.Payload.of('{"rows": [{"id": 1}, {"id": 2}]}', node="finder")
+check("payload reads its own records", [r["id"] for r in p.records], [1, 2])
+check("payload knows it is json", p.kind, "json")
+check("payload remembers who made it", p.node, "finder")
+check("payload text is the wire", p.wire(), '{"rows": [{"id": 1}, {"id": 2}]}')
+check("a dict becomes json text", M.Payload.of({"a": 1}).text, '{\n  "a": 1\n}')
+check("plain text has no records", M.Payload.of("hello").records, [])
+check("an error payload knows it failed", M.Payload.of("error: nope").failed, True)
+check("a good payload did not fail", M.Payload.of("fine").failed, False)
+check("wrapping a payload keeps it", M.Payload.of(p).records, p.records)
+check("rewrapping restamps the node", M.Payload.of(p, node="next").node, "next")
+try:
+    M.Payload(text="x", recrods=[])  # a typo in the envelope must not pass silently
+    check("payload rejects unknown fields", "accepted", "rejected")
+except ValidationError:
+    check("payload rejects unknown fields", "rejected", "rejected")
+
+print("typed workflow spec")
+spec = M.WorkflowSpec.of({"name": "typed", "interval": "600", "compute": {"max_cpu": 70, "max_vram": 1},
+                          "safeguards": {"allow_shell": True},
+                          "nodes": [{"type": "input", "name": "i", "source": "text", "value": "go"},
+                                    {"type": "agent", "name": "a", "model": "fake:1", "retry": "2",
+                                     "schema": {"type": "object"}},
+                                    {"type": "output", "name": "o"}]})
+check("numbers in yaml strings are coerced", spec.interval, 600)
+check("retry is an int", spec.nodes[1].retry, 2)
+check("schema is reachable by name", spec.nodes[1].output_schema, {"type": "object"})
+check("defaults fill themselves in", (spec.nodes[0].mode, spec.nodes[2].sink, spec.nodes[1].parallel),
+      ("sync", "print", 4))
+check("known compute limits only", spec.compute.limits(), {"max_cpu": 70.0})
+check("unknown compute limit kept for the warning", spec.compute.unknown(), ["max_vram"])
+check("safeguards are typed", (spec.safeguards.allow_shell, spec.safeguards.allow_email), (True, False))
+check("the old agents key still parses", [n.name for n in M.WorkflowSpec.of(
+    {"agents": [{"name": "solo", "model": "fake:1"}]}).nodes], ["solo"])
+check("a node that is not a mapping does not crash the parse", len(M.WorkflowSpec.of(
+    {"nodes": ["junk", {"type": "output", "name": "o"}]}).nodes), 1)
+
+print("run records leave unset keys out")
+line = M.NodeRecord(name="a", type="agent", mode="async", note="running in its own thread").line()
+check("async line carries no timings", sorted(line), ["mode", "name", "note", "type"])
+check("run record keeps only what happened", sorted(M.RunRecord(workflow="w", started="now").file()),
+      ["nodes", "started", "workflow"])
+
+print("crawler")
+import crawler as CR  # noqa: E402
+
+SITE = {
+    "https://crawl.test/robots.txt": (200, "User-agent: *\nDisallow: /private\nCrawl-delay: 0\n"),
+    "https://crawl.test/": (200, '<title>Home</title><a href="/a">A</a><a href="/private/x">secret</a>'
+                                 '<a href="https://other.test/z">off site</a>'),
+    "https://crawl.test/a": (200, '<title>Jobs</title><p>We are hiring a staff engineer in berlin</p>'
+                                  '<a href="/b">B</a><a href="/">home</a>'),
+    "https://crawl.test/b": (200, '<title>B</title><p>one link deeper</p><a href="/c">C</a>'),
+    "https://crawl.test/c": (200, "<title>C</title><p>two links deeper</p>"),
+    "https://crawl.test/private/x": (200, "<title>Secret</title><p>should never be read</p>"),
+    "https://other.test/robots.txt": (404, ""),
+    "https://other.test/z": (200, "<title>Off site</title><p>a page on another host</p>"),
+}
+hits = []
+
+
+class _Answer:
+    def __init__(self, status, text):
+        self.status_code, self.text = status, text
+
+
+def _get(url, **kw):
+    hits.append(url)
+    status, text = SITE.get(url, (404, ""))
+    return _Answer(status, text)
+
+
+CR.httpx = types.SimpleNamespace(get=_get)
+CR.MIN_DELAY = 0
+
+
+def crawl(**kw):
+    CR._robots.clear()
+    CR._last_hit.clear()
+    del hits[:]
+    yard = tempfile.mkdtemp()
+    research.use_dir(yard)
+    sandbox.use_dir(yard, allow_private_network=True)  # crawl.test is not a real host
+    return CR.crawl("https://crawl.test/", **kw), yard
+
+
+full, yard = crawl(pages=10, depth=3)
+check("crawler followed relative links", sorted(p.url for p in full.pages),
+      ["https://crawl.test/", "https://crawl.test/a", "https://crawl.test/b", "https://crawl.test/c"])
+check("crawler stayed on the site", any("other.test" in u for u in hits), False)
+check("robots.txt was obeyed", full.skipped.get("robots.txt says no"), 1)
+check("the disallowed page was never fetched", "https://crawl.test/private/x" in hits, False)
+check("depth was recorded", [p.depth for p in sorted(full.pages, key=lambda p: p.url)], [0, 1, 2, 3])
+check("the page it came from was recorded", next(p.from_url for p in full.pages
+                                                 if p.url == "https://crawl.test/b"), "https://crawl.test/a")
+check("titles were kept", next(p.title for p in full.pages if p.url == "https://crawl.test/a"), "Jobs")
+check("page text came back", "staff engineer in berlin" in next(
+    p.text for p in full.pages if p.url == "https://crawl.test/a"), True)
+check("nothing left to follow is said plainly", full.stopped, "nothing left to follow")
+
+capped, _ = crawl(pages=2, depth=3)
+check("page cap stops it", capped.kept, 2)
+check("the cap that fired is named", capped.stopped, "page cap, 2 pages")
+
+shallow, _ = crawl(pages=10, depth=1)
+check("depth cap stops it", sorted(p.url for p in shallow.pages),
+      ["https://crawl.test/", "https://crawl.test/a"])
+check("the depth cap is named", shallow.stopped,
+      "depth cap, 1 link(s) deep, 1 link(s) left unfollowed")
+
+picky, _ = crawl(pages=10, depth=3, must_match="staff engineer")
+check("must_match keeps only matching pages", [p.url for p in picky.pages], ["https://crawl.test/a"])
+check("the pages it rejected are counted", picky.skipped.get("did not match must_match"), 3)
+check("it still crawled past the pages it dropped", picky.read, 4)
+
+wide, _ = crawl(pages=10, depth=1, same_site=False)
+check("same_site false follows links off the site", any("other.test/z" in p.url for p in wide.pages), True)
+
+bad, _ = crawl(must_match="[unclosed")
+check("a broken must_match is reported, not raised", bad.stopped.startswith(
+    "must_match is not a regular expression"), True)
+
+asked, _ = crawl(pages=999, depth=99)
+check("an agent cannot ask for more than the ceiling", (CR.MAX_PAGES, CR.MAX_DEPTH), (40, 4))
+check("over-asking still crawls", asked.read, 4)
+
+crawled, yard = crawl(pages=10, depth=3)
+check("crawled pages are kept as evidence", "staff engineer in berlin" in
+      research.fetched_text("https://crawl.test/a"), True)
+quoted = json.dumps({"jobs": [{"title": "staff engineer", "link": "https://crawl.test/a",
+                               "quote": "hiring a staff engineer in berlin"},
+                              {"title": "made up", "link": "https://crawl.test/a",
+                               "quote": "hiring a plumber in paris today"}]})
+checked = json.loads(W.verify_records(quoted))
+check("a record quoting a crawled page verifies", checked["jobs"][0]["verified"], True)
+check("a record misquoting a crawled page is caught", checked["jobs"][1]["verified"], False)
+
+again = CR.crawl("https://crawl.test/", pages=10, depth=3)  # same workflow, nothing changed
+check("a re-crawl says the site is unchanged rather than looking broken", again.stopped,
+      "every page read was unchanged since an earlier run, nothing on this site is new")
+check("the re-crawl still read the pages", again.read, 4)
+check("unchanged pages are counted as such", again.skipped.get("unchanged since an earlier run"), 4)
+
+CR._robots.clear()  # a different workflow folder starts with no crawl memory
+CR._last_hit.clear()
+tool_yard = tempfile.mkdtemp()
+research.use_dir(tool_yard)
+sandbox.use_dir(tool_yard, allow_private_network=True)
+wire = W.rows_of(CR.crawl_site("https://crawl.test/", pages=3, depth=2))
+check("the tool hands back rows a sink can write", sorted(wire[0]), sorted(
+    ["url", "depth", "from_url", "title", "words", "text", "note", "error"]))
+check("the tool returns one row per page", len(wire), 3)
+
+print("run events, control and test mode")
+import events as EV  # noqa: E402
+import checks as CH  # noqa: E402
+import metrics as MX  # noqa: E402
+import runner as RUN  # noqa: E402
+
+folder_ev = make({"name": "evented", "nodes": [
+    {"type": "input", "name": "i", "source": "text", "value": "hello"},
+    {"type": "agent", "name": "a", "model": "fake:1", "tools": []},
+    {"type": "output", "name": "o"}]})
+REPLIES[:] = [{"content": "model said this"}]
+box = EV.BUS.subscribe()
+W.Workflow(folder_ev).run_once(run_id="t1")
+EV.BUS.drop(box)
+stream = EV.BUS.history("t1")
+check("every event carries the run", {e["run_id"] for e in stream}, {"t1"})
+check("the run is bracketed", (stream[0]["type"], stream[-1]["type"]), ("run_started", "run_completed"))
+check("one node_started per node", sum(1 for e in stream if e["type"] == "node_started"), 3)
+check("the finish says how it ended", stream[-1]["status"], "completed")
+check("events are numbered in order", [e["seq"] for e in stream], sorted(e["seq"] for e in stream))
+check("history is scoped to one run", EV.BUS.history("nope"), [])
+
+print("pause, stop and cancelled nodes")
+control = RUN.Control()
+control.pause()
+check("a paused control says to hold", control.paused, True)
+control.stop()
+check("a stopped control lets the gate through", control.gate(), "stopped")
+
+folder_stop = make({"name": "stopper", "nodes": [
+    {"type": "input", "name": "i", "source": "text", "value": "x"},
+    {"type": "agent", "name": "a", "model": "fake:1", "tools": []},
+    {"type": "output", "name": "o"}]})
+stopped = RUN.Control()
+stopped.stop()
+W.Workflow(folder_stop).run_once(run_id="t2", control=stopped)
+rec_stop = json.load(open(os.path.join(folder_stop, "runs",
+                                       sorted(os.listdir(os.path.join(folder_stop, "runs")))[-1], "run.json")))
+check("a stopped run says so", rec_stop["status"], "stopped")
+check("every unfinished node is cancelled", [n["status"] for n in rec_stop["nodes"]],
+      ["cancelled", "cancelled", "cancelled"])
+
+print("disabled nodes are stepped over")
+folder_off = make({"name": "offnode", "nodes": [
+    {"type": "input", "name": "i", "source": "text", "value": "x"},
+    {"type": "agent", "name": "skipme", "model": "fake:1", "tools": [], "disabled": True},
+    {"type": "output", "name": "o"}]})
+W.Workflow(folder_off).run_once()
+rec_off = json.load(open(os.path.join(folder_off, "runs",
+                                      sorted(os.listdir(os.path.join(folder_off, "runs")))[-1], "run.json")))
+check("a disabled node never runs", [n["name"] for n in rec_off["nodes"]], ["i", "o"])
+
+print("test mode mocks what would leave the machine")
+folder_dry = make({"name": "dryrun", "nodes": [
+    {"type": "input", "name": "i", "source": "text",
+     "value": '{"rows": [{"id": 1}]}'},
+    {"type": "approval", "name": "ask", "prompt": "Send it?"},
+    {"type": "output", "name": "o", "sink": "csv", "path": "out.csv"}]})
+out_dry = W.Workflow(folder_dry).run_once(run_id="t3", mode="test")
+check("a test run does not stop at an approval", out_dry.failed, False)
+check("a test run writes no csv", os.path.exists(os.path.join(folder_dry, "out.csv")), False)
+check("a test run files no metrics", os.path.exists(os.path.join(folder_dry, "metrics.jsonl")), False)
+rec_dry = json.load(open(os.path.join(folder_dry, "runs",
+                                      sorted(os.listdir(os.path.join(folder_dry, "runs")))[-1], "run.json")))
+check("the record says it was a test", rec_dry["mode"], "test")
+check("the mocked sink is in the run's events",
+      any(e["type"] == "tool_call" and e["tool"] == "sink:csv" for e in EV.BUS.history("t3")), True)
+
+print("retry from one node")
+folder_from = make({"name": "fromnode", "nodes": [
+    {"type": "input", "name": "i", "source": "text", "value": "first"},
+    {"type": "agent", "name": "a", "model": "fake:1", "tools": []},
+    {"type": "output", "name": "o"}]})
+REPLIES[:] = [{"content": "second time"}]
+W.Workflow(folder_from).run_once(from_node="a", seed="given by hand")
+rec_from = json.load(open(os.path.join(folder_from, "runs",
+                                       sorted(os.listdir(os.path.join(folder_from, "runs")))[-1], "run.json")))
+check("it starts at the node asked for", [n["name"] for n in rec_from["nodes"]], ["a", "o"])
+check("it starts from the input given", rec_from["nodes"][0]["input"], "given by hand")
+
+print("declared metrics")
+folder_m = make({"name": "measured",
+                 "metrics": [{"key": "score", "label": "Avg", "agg": "avg", "format": "percent"},
+                             {"key": "ok", "agg": "rate"}],
+                 "nodes": [{"type": "input", "name": "i", "source": "text",
+                            "value": '{"rows": [{"score": 0.5, "ok": true}, {"score": 1.0, "ok": false}]}'},
+                           {"type": "output", "name": "o"}]})
+W.Workflow(folder_m).run_once()
+line = json.loads(open(os.path.join(folder_m, "metrics.jsonl")).read().strip())
+check("declared metrics are computed", line["values"], {"score": 0.75, "ok": 0.5})
+check("the metric line carries the run", (line["status"], line["records"]), ("completed", 2))
+check("history reads back", len(MX.read(folder_m)), 1)
+check("an unknown aggregation is flagged", "metrics: 'median' is not an aggregation this engine knows"
+      in W.validate({"metrics": [{"key": "x", "agg": "median"}],
+                     "nodes": [{"type": "output", "name": "o"}]}), True)
+
+print("output checks")
+check("a missing required field is caught",
+      CH.validate_output('{"rows": []}', {"type": "object", "required": ["jobs"]})["problems"],
+      ["schema requires 'jobs', which is missing"])
+check("a schema on prose is caught",
+      CH.validate_output("just talking", {"type": "object"})["problems"][0],
+      "node has a schema but its output is not JSON")
+check("clean output passes", CH.validate_output('{"a": 1}', {"type": "object"})["ok"], True)
+check("the same tool call over and over is caught",
+      any("3 times" in p for p in CH.validate_output("fine", None,
+          [{"tool": "web_search", "args": {"q": "a"}}] * 3)["problems"]), True)
+
+for folder in (folder_ev, folder_stop, folder_off, folder_dry, folder_from, folder_m):
+    shutil.rmtree(folder, ignore_errors=True)
 
 for folder in (folder, folder2, folder3, folder4, folder5, folder6, folder7, folder8, parent_root, a, b):
     shutil.rmtree(folder, ignore_errors=True)

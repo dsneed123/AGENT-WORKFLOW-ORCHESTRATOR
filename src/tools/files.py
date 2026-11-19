@@ -27,6 +27,8 @@ def write_file(path: str, content: str) -> str:
     refusal = sandbox.check_path(path)
     if refusal:
         return refusal
+    if sandbox.dry_run():
+        return sandbox.mocked(f"write {len(content)} chars to {path}")
     try:
         with open(sandbox.resolve(path), "w") as f:
             f.write(content)

@@ -29,6 +29,8 @@ def http_request(method: str, url: str, body: str = "", headers: str = "") -> st
         return refusal
     if method.upper() not in ("GET", "POST", "PUT", "PATCH", "DELETE"):
         return f"error: {method} is not a method this tool will send"
+    if method.upper() != "GET" and sandbox.dry_run():
+        return sandbox.mocked(f"{method.upper()} {url} with body {body[:200]}")
     try:
         sent = json.loads(body) if body.strip() else None
         extra = json.loads(headers) if headers.strip() else {}
@@ -88,6 +90,8 @@ def screenshot(url: str, path: str = "screenshot.png") -> str:
     refusal = sandbox.check_url(url) or sandbox.check_path(path)
     if refusal:
         return refusal
+    if sandbox.dry_run():
+        return sandbox.mocked(f"save a picture of {url} to {path}")
     try:
         done = subprocess.run(["node", SHOT, url, sandbox.resolve(path)],
                               capture_output=True, text=True, timeout=90)
@@ -110,6 +114,8 @@ def send_email(to: str, subject: str, body: str) -> str:
     """
     if not sandbox.policy().get("email"):
         return "error: email is off for this workflow, set safeguards.allow_email to turn it on"
+    if sandbox.dry_run():
+        return sandbox.mocked(f"email {to} with subject {subject!r}")
     host, user, password = (os.environ.get("AWO_SMTP_HOST"), os.environ.get("AWO_SMTP_USER"),
                             os.environ.get("AWO_SMTP_PASSWORD"))
     if not (host and user and password):

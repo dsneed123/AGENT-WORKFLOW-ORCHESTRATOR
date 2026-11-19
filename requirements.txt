@@ -1,0 +1,4 @@
+httpx
+ollama
+pydantic>=2
+PyYAML

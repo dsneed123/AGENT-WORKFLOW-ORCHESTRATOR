@@ -4,52 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AWO Studio</title>
-<link rel="stylesheet" href="/tokens.css">
-<link rel="stylesheet" href="/studio.css">
 </head>
 <body>
-<header class="topbar">
-  <span class="wordmark"><span class="wordmark-sq"></span><span class="display">AWO&nbsp;Studio</span></span>
-  <span class="doc-control" id="doccontrol">agent workflow orchestrator · rev 1 · local</span>
-  <span class="topbar-right">
-    <button class="btn ghost" id="refresh">Refresh</button>
-    <button class="btn primary" id="run">Run cycle</button>
-  </span>
-</header>
-
-<main class="shell">
-  <aside class="rail panel">
-    <p class="eyebrow">Board</p>
-    <ul class="wflist"><li><button id="boardbtn"><span class="wfname">Main board</span>
-      <span class="wfmeta" id="boardmeta">widgets</span></button></li></ul>
-    <p class="eyebrow">Workflows</p>
-    <ul class="wflist" id="wflist"></ul>
-    <p class="eyebrow">Files</p>
-    <ul class="filelist" id="filelist"></ul>
-  </aside>
-
-  <section class="middle">
-    <nav class="tabs">
-      <button class="tab is-on" data-view="canvas">Canvas</button>
-      <button class="tab" data-view="dashboard">Dashboard</button>
-      <button class="tab" data-view="source">Source</button>
-      <button class="btn ghost" id="addwidget" style="margin-left:auto;display:none">Add widget</button>
-    </nav>
-    <div class="stage" id="stage"></div>
-  </section>
-
-  <aside class="chat panel">
-    <p class="eyebrow">Build with chat</p>
-    <div class="chatlog" id="chatlog"></div>
-    <form class="chatform" id="chatform">
-      <textarea id="chatinput" rows="3" placeholder="watch hacker news for rust posts and report them"></textarea>
-      <div class="chatrow">
-        <label class="chatmode"><input type="checkbox" id="editmode"> edit selected</label>
-        <button class="btn primary" type="submit">Send</button>
-      </div>
-    </form>
-  </aside>
-</main>
-<script src="/studio.js"></script>
+<div id="root"></div>
+<script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

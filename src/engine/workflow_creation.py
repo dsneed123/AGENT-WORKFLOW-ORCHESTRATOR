@@ -77,6 +77,10 @@ Rules:
 2. Any agent that needs facts off the web gets web_search and http_get, and its system_prompt must order it
    to open pages before reporting. Search results alone are not evidence. Add browser_get as well when the
    source is a modern site that renders with JavaScript, such as a job board or a dashboard.
+   When the facts are spread over a whole site rather than one page, such as a careers board, a docs set
+   or a listings index, give it crawl_site instead of making it fetch page after page: one call walks the
+   site, obeys robots.txt and returns every page it read. Tell it in the system_prompt which site to start
+   from and what must_match pattern the pages it wants will contain.
 3. Only an agent node may carry a schema. Give the last agent one. It is a key on that agent node itself, indented under it beside model and
    tools, never at the top level of the file. Records inside it must include a link field. The engine checks
    every link against the pages that agent really visited and stamps verified true or false by itself, so do
@@ -100,6 +104,103 @@ Rules:
     date, calculate for arithmetic, remember and recall to carry notes between runs.
 13. Never invent a tool name, a model name or a node type.
 """
+
+
+def _strip_fence(text):
+    text = (text or "").strip()
+    if text.startswith("```"):
+        text = text.split("```")[1].strip()
+        if text.startswith("yaml"):
+            text = text[4:].strip()
+    return text
+
+
+def _tidy(data, models, model_name):
+    """Drop invented tools and models. Only agent nodes carry tools, so a diff stays honest."""
+    for node in data.get("nodes") or data.get("agents", []):
+        if not isinstance(node, dict):
+            continue
+        if node.get("type", "agent") == "agent":
+            node["tools"] = [t for t in node.get("tools", []) if t in BY_NAME]
+            if node.get("model") not in models:
+                node["model"] = model_name
+        else:
+            node.pop("tools", None)
+
+
+def _rules(goal, model_name):
+    models = [m.model for m in ollama.list().models]
+    tools = "".join(f"  - {name}: {fn.__doc__.strip().splitlines()[0]}\n" for name, fn in BY_NAME.items())
+    return SPEC.format(goal=goal, models=", ".join(models), tools=tools), models
+
+
+def propose_workflow(user_goal: str, model_name: str = "qwen3-coder-next:latest"):
+    """Write a workflow file for a goal and hand it back WITHOUT saving it."""
+    try:
+        prompt, models = _rules(user_goal, model_name)
+        answer = _strip_fence(ollama.chat(model=model_name, stream=False,
+                                          messages=[{"role": "user", "content": prompt}])["message"]["content"])
+        data = yaml.safe_load(answer)
+        if not isinstance(data, dict):
+            return {"success": False, "error": "the model did not return a workflow"}
+        _tidy(data, models, model_name)
+        text = yaml.dump(data, default_flow_style=False, sort_keys=False)
+        return {"success": True, "yaml": text, "warnings": validate(data),
+                "name": data.get("name", "unnamed")}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def propose_edit(folder: str, instruction: str, model_name: str = "qwen3-coder-next:latest",
+                 node: str = ""):
+    """Rewrite an existing workflow from an instruction and hand it back WITHOUT saving it."""
+    path = os.path.join(folder, "workflow.yaml")
+    try:
+        with open(path, "r") as f:
+            current = f.read()
+        prompt, models = _rules("(editing an existing workflow)", model_name)
+        scope = f"The person is looking at the node '{node}'. Change that node unless they say otherwise.\n" if node else ""
+        answer = _strip_fence(ollama.chat(model=model_name, stream=False, messages=[
+            {"role": "user", "content": prompt},
+            {"role": "user", "content": f"This is the current workflow:\n\n{current}\n\n{scope}"
+             f"Change it as follows: {instruction}\nReturn the whole updated YAML, raw, nothing else."}
+        ])["message"]["content"])
+        data = yaml.safe_load(answer)
+        if not isinstance(data, dict):
+            return {"success": False, "error": "the model did not return a workflow"}
+        _tidy(data, models, model_name)
+        text = yaml.dump(data, default_flow_style=False, sort_keys=False)
+        return {"success": True, "yaml": text, "current": current, "warnings": validate(data)}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+ASK = """You are looking at one workflow in an agent orchestrator and answering its author.
+Answer in plain words, under 180 words, no preamble, no markdown headings.
+
+The workflow file:
+{yaml}
+
+What the last run did:
+{run}
+
+Question: {question}
+"""
+
+
+def answer_question(folder: str, question: str, run_summary: str = "",
+                    model_name: str = "qwen3-coder-next:latest"):
+    """Answer a question about a workflow and its last run. Writes nothing."""
+    try:
+        with open(os.path.join(folder, "workflow.yaml"), "r") as f:
+            current = f.read()
+        prompt = ASK.format(yaml=current[:6000], run=(run_summary or "it has not run yet")[:6000],
+                            question=question)
+        answer = ollama.chat(model=model_name, stream=False,
+                             messages=[{"role": "user", "content": prompt}])["message"]["content"]
+        return {"success": True, "answer": answer.strip()}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 def create_workflow_from_ai(user_goal: str, model_name: str = "qwen3-coder-next:latest"):

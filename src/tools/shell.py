@@ -11,6 +11,8 @@ def run_shell_command(command: str) -> str:
     refusal = sandbox.check_command(command)
     if refusal:
         return refusal
+    if sandbox.dry_run():
+        return sandbox.mocked(f"run: {command}")
     try:
         result = subprocess.run(
             command,

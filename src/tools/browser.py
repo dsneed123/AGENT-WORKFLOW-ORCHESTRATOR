@@ -33,12 +33,8 @@ def browser_get(url: str) -> str:
         page = json.loads(done.stdout)
     except Exception:
         return f"error: browser returned nothing for {url}"
-    st["fetched"][research.key(url)] = None
-    for link in page.get("links", []):  # feed the crawl frontier like http_get does
-        research._harvest(f'href="{link}"')
+    research.note_links(page.get("links", []))  # feed the crawl frontier like http_get does
     text = re.sub(r"\s+", " ", page.get("text", "")).strip()[:20000]
-    st["text"][research.key(url)] = text
-    while len(st["text"]) > 60:
-        st["text"].pop(next(iter(st["text"])))
+    research.remember_page(url, text)
     research._save()
     return text or f"{url} rendered but had no text"

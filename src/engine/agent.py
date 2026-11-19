@@ -1,10 +1,12 @@
 import os
 import sys
+import time
 
 import ollama
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools"))
 from browser import browser_get
+from crawler import crawl_site
 from docs import read_doc, read_pdf, read_table, search_files, sql_query
 from files import list_dir, read_file, write_file
 from memory import recall, remember
@@ -19,7 +21,7 @@ PIPELINE_RULES = (
     "If you need data, call your tools and get it yourself. Output the result only."
 )
 TOOLS = [run_shell_command, read_file, write_file, list_dir, search_files,
-         http_get, web_search, browser_get, screenshot,
+         http_get, web_search, crawl_site, browser_get, screenshot,
          http_request, rss_feed, send_email,
          read_pdf, read_doc, read_table, sql_query,
          remember, recall, now, calculate]
@@ -27,7 +29,7 @@ BY_NAME = {f.__name__: f for f in TOOLS}
 
 class Agent:
     def __init__(self, model, name, system_prompt="", tools=TOOLS, output_format=None, dispatch=None,
-                 require_tools=()):
+                 require_tools=(), on_tool=None):
         self.system_prompt = f"{system_prompt}\n\n{PIPELINE_RULES}".strip()
         self.model = model
         self.name = name
@@ -35,7 +37,9 @@ class Agent:
         self.output_format = output_format
         self.dispatch = dispatch or {}  # extra tools by name, e.g. everything an MCP server offers
         self.require_tools = list(require_tools)  # answering without calling these is a fabrication
+        self.on_tool = on_tool                    # the studio watches tool calls as they happen
         self.calls = []
+        self.tokens = {"prompt": 0, "completion": 0, "total": 0}
 
     def spin_up(self):
         try:
@@ -54,17 +58,22 @@ class Agent:
         by_name = {f.__name__: f for f in self.tools if callable(f)}
         by_name.update(self.dispatch)
         self.calls = []
+        self.tokens = {"prompt": 0, "completion": 0, "total": 0}
         shaping, nagged = False, 0
         try:
             print(f"\033[38;5;166m▸ {self.name}\033[0m \033[2mworking ...\033[0m")
             for _ in range(12):
-                message = ollama.chat(
+                reply = ollama.chat(
                     model=self.model,
                     stream=False,
                     messages=messages,
                     tools=self.tools,
                     format=self.output_format if shaping else None,
-                )["message"]
+                )
+                self.tokens["prompt"] += int(reply.get("prompt_eval_count") or 0)
+                self.tokens["completion"] += int(reply.get("eval_count") or 0)
+                self.tokens["total"] = self.tokens["prompt"] + self.tokens["completion"]
+                message = reply["message"]
                 messages.append(message)
                 calls = message.get("tool_calls") or []
                 if not calls:
@@ -90,9 +99,13 @@ class Agent:
                     name = call["function"]["name"]
                     print(f"  \033[2m└ {name}({call['function']['arguments']})\033[0m")
                     fn = by_name.get(name)
+                    clock = time.time()
                     output = fn(**call["function"]["arguments"]) if fn else f"error: unknown tool {name}"
-                    self.calls.append({"tool": name, "args": call["function"]["arguments"],
-                                       "result": str(output)[:2000]})
+                    logged = {"tool": name, "args": call["function"]["arguments"],
+                              "result": str(output)[:2000], "ms": int((time.time() - clock) * 1000)}
+                    self.calls.append(logged)
+                    if self.on_tool:
+                        self.on_tool(logged)
                     messages.append({"role": "tool", "name": name, "content": str(output)})
             return "error: tool loop limit reached"
         except Exception as e:

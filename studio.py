@@ -11,6 +11,7 @@ import json
 import os
 import secrets
 import sys
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -20,11 +21,19 @@ sys.path.insert(0, os.path.join(ROOT, "src", "engine"))
 import yaml  # noqa: E402
 
 import compute  # noqa: E402
+import diffs  # noqa: E402
+import editing  # noqa: E402
+import events  # noqa: E402
+import metrics as metricstore  # noqa: E402
+import runner  # noqa: E402
 from workflow import Workflow, validate  # noqa: E402
-from workflow_creation import (WORKFLOWS_DIR, create_workflow_from_ai,  # noqa: E402
-                               edit_workflow_from_ai)
+from workflow_creation import (WORKFLOWS_DIR, answer_question, create_workflow_from_ai,  # noqa: E402
+                               edit_workflow_from_ai, propose_edit, propose_workflow)
 
 UI = os.path.join(ROOT, "ui")
+DIST = os.path.join(UI, "dist")
+LEGACY = os.path.join(UI, "legacy")
+RUNNER = runner.Runner(WORKFLOWS_DIR)
 BOARD = os.path.join(ROOT, "board.json")
 TOKEN = os.environ.get("AWO_TOKEN", "")
 PUBLIC = {"/api/health"}
@@ -40,11 +49,19 @@ def folders():
 def describe(folder):
     path = os.path.join(WORKFLOWS_DIR, folder)
     data = yaml.safe_load(open(os.path.join(path, "workflow.yaml"), "r")) or {}
+    active = RUNNER.active(folder)
     return {"folder": folder, "name": data.get("name", folder), "purpose": data.get("purpose", ""),
             "alwaysOn": bool(data.get("alwaysOn")), "interval": data.get("interval", 300),
-            "schedule": data.get("schedule"),
+            "schedule": data.get("schedule"), "metrics": data.get("metrics") or [],
             "nodes": data.get("nodes") or data.get("agents", []), "problems": validate(data),
-            "files": [f for f in sorted(os.listdir(path)) if f not in ("workflow.yaml", "runs")]}
+            "running": active.run_id if active else None,
+            "files": [f for f in sorted(os.listdir(path))
+                      if f not in ("workflow.yaml", "runs", "versions")]}
+
+
+def ui_root():
+    """The built app when it exists, otherwise the pre-React page, so the studio is never blank."""
+    return DIST if os.path.isfile(os.path.join(DIST, "index.html")) else LEGACY
 
 
 def runs(folder, limit=24):
@@ -130,7 +147,11 @@ def resolve(widget):
         if field and rows:
             numbers = [r[field] for r in rows if isinstance(r.get(field), (int, float))]
             if numbers:
-                return {"value": round(sum(numbers), 2), "foot": f"sum of {field} over {len(numbers)} records"}
+                how = widget.get("agg", "sum")
+                value = {"avg": sum(numbers) / len(numbers), "min": min(numbers), "max": max(numbers),
+                         "count": len(numbers)}.get(how, sum(numbers))
+                return {"value": round(value, 2),
+                        "foot": f"{how} of {field} over {len(numbers)} records"}
         return {"error": f"unknown metric {metric}"}
     if kind == "table":
         keys = widget.get("columns") or (sorted({k for r in rows for k in r})[:7] if rows else [])
@@ -181,6 +202,44 @@ class Studio(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
+    def _stream(self, folder, after, run_id=None):
+        """Server-sent events: replay one run's missed lines, then follow the bus live.
+
+        Only the run the browser names is replayed. Replaying every past run would hand a
+        fresh page a pile of finished runs and let it paint one of them as the live one.
+        """
+        box = events.BUS.subscribe()
+        self.send_response(200)
+        self._cors()
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.send_header("X-Accel-Buffering", "no")
+        self.end_headers()
+
+        def write(line):
+            self.wfile.write(f"id: {line.get('seq', 0)}\ndata: {json.dumps(line)}\n\n".encode())
+            self.wfile.flush()
+
+        try:
+            for line in (events.BUS.history(run_id, after) if run_id else []):
+                if folder and line.get("workflow") != folder:
+                    continue
+                write(line)
+            while True:
+                try:
+                    line = box.get(timeout=15)
+                except Exception:
+                    write({"type": "heartbeat", "run_id": "", "seq": 0, "at": time.time()})
+                    continue
+                if folder and line.get("workflow") != folder:
+                    continue
+                write(line)
+        except Exception:
+            pass  # the browser went away
+        finally:
+            events.BUS.drop(box)
+
     def do_GET(self):
         url = urlparse(self.path)
         query = parse_qs(url.query)
@@ -202,11 +261,44 @@ class Studio(BaseHTTPRequestHandler):
         if url.path == "/api/yaml":
             with open(os.path.join(WORKFLOWS_DIR, query["w"][0], "workflow.yaml"), "r") as f:
                 return self._send({"yaml": f.read()})
+        if url.path == "/api/events":
+            return self._stream((query.get("w") or [None])[0],
+                                int((query.get("after") or ["0"])[0]),
+                                (query.get("run") or [None])[0])
+        if url.path.startswith("/api/run/"):
+            run = RUNNER.get(url.path.rsplit("/", 1)[1])
+            if not run:
+                return self._send({"error": "no such run"}, code=404)
+            return self._send({"run": run.model_dump(),
+                               "events": events.BUS.history(run.run_id)})
+        if url.path == "/api/active":
+            folder = (query.get("w") or [None])[0]
+            run = RUNNER.active(folder) if folder else None
+            return self._send({"run": run.model_dump() if run else None,
+                               "recent": [r.model_dump() for r in RUNNER.recent(folder, 10)]})
+        if url.path == "/api/metrics":
+            folder = query["w"][0]
+            window = (query.get("range") or ["7d"])[0]
+            path = os.path.join(WORKFLOWS_DIR, folder)
+            data = yaml.safe_load(open(os.path.join(path, "workflow.yaml"), "r")) or {}
+            return self._send({"declared": data.get("metrics") or [], "range": window,
+                               "lines": metricstore.read(path, metricstore.since_for(window))})
+        if url.path == "/api/metrics/system":
+            window = (query.get("range") or ["7d"])[0]
+            return self._send(metricstore.system([os.path.join(WORKFLOWS_DIR, f) for f in folders()],
+                                                 window) | {"range": window})
+        if url.path == "/api/versions":
+            return self._send({"versions": editing.versions(os.path.join(WORKFLOWS_DIR, query["w"][0]))})
 
+        root = ui_root()
         name = "index.html" if url.path in ("/", "") else url.path.lstrip("/")
-        path = os.path.normpath(os.path.join(UI, name))
-        if not path.startswith(UI) or not os.path.isfile(path):
-            return self._send({"error": "not found"}, code=404)
+        path = os.path.normpath(os.path.join(root, name))
+        if not path.startswith(root) or not os.path.isfile(path):
+            if url.path.startswith("/api/") or "." in os.path.basename(url.path):
+                return self._send({"error": "not found"}, code=404)
+            path = os.path.join(root, "index.html")  # the app owns its own routes
+            if not os.path.isfile(path):
+                return self._send({"error": "no ui built, run: cd ui && npm run build"}, code=404)
         with open(path, "rb") as f:
             self._send(f.read(), TYPES.get(os.path.splitext(path)[1], "text/plain"))
 
@@ -216,12 +308,50 @@ class Studio(BaseHTTPRequestHandler):
             return self._send({"error": "bad or missing token"}, code=401)
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
         if url.path == "/api/run":
+            # a run now happens in its own thread and is watched over /api/events
+            state, problem = RUNNER.start(body["folder"], mode=body.get("mode", "run"),
+                                          from_node=body.get("from_node"), seed=body.get("input"))
+            if problem:
+                return self._send({"success": False, "error": problem})
+            return self._send({"success": True, "run": state.model_dump()})
+        if url.path == "/api/control":
+            state, problem = RUNNER.control(body.get("run_id", ""), body.get("action", ""))
+            if problem:
+                return self._send({"success": False, "error": problem})
+            return self._send({"success": True, "run": state.model_dump()})
+        if url.path == "/api/apply":
             folder = os.path.join(WORKFLOWS_DIR, body["folder"])
-            try:
-                Workflow(folder).run_once()
-                return self._send({"success": True, "runs": runs(body["folder"], 1)})
-            except Exception as e:
-                return self._send({"success": False, "error": str(e)})
+            return self._send(editing.apply_yaml(folder, body.get("yaml", ""),
+                                                 label=body.get("label", "chat")))
+        if url.path == "/api/ask":
+            folder = os.path.join(WORKFLOWS_DIR, body["folder"])
+            history = runs(body["folder"], 1)
+            summary = ""
+            if history:
+                last = history[0]
+                lines = [f"run {last.get('run_id', '')} {last.get('status', '')} in {last.get('ms', 0)}ms"]
+                for node in last.get("nodes", []):
+                    verdict = node.get("validation") or {}
+                    lines.append(
+                        f"- {node.get('name')} ({node.get('type')}): {node.get('status', '')}"
+                        f"{' FAILED: ' + str(node.get('error'))[:400] if node.get('failed') else ''}"
+                        f"{' problems: ' + '; '.join(verdict.get('problems', [])) if verdict.get('problems') else ''}"
+                        f" output: {str(node.get('output'))[:400]}")
+                summary = "\n".join(lines)
+            return self._send(answer_question(folder, body.get("question", ""), summary))
+        if url.path == "/api/create":
+            return self._send(editing.create_from_yaml(WORKFLOWS_DIR, body.get("yaml", "")))
+        if url.path == "/api/restore":
+            folder = os.path.join(WORKFLOWS_DIR, body["folder"])
+            return self._send(editing.restore(folder, body.get("version", "")))
+        if url.path == "/api/node":
+            folder = os.path.join(WORKFLOWS_DIR, body["folder"])
+            return self._send(editing.node_action(folder, body.get("action", ""), body.get("name", ""),
+                                                  x=body.get("x", 0), y=body.get("y", 0)))
+        if url.path == "/api/board/pin":
+            board_now = board()
+            widgets = [w for w in board_now.get("widgets", []) if w.get("id") != body["widget"].get("id")]
+            return self._send(save_board({"widgets": widgets + [body["widget"]]}))
         if url.path.startswith("/api/trigger/"):  # webhook trigger: POST to run one cycle
             folder = url.path.rsplit("/", 1)[-1]
             try:
@@ -232,6 +362,19 @@ class Studio(BaseHTTPRequestHandler):
         if url.path == "/api/board":
             return self._send(save_board({"widgets": body.get("widgets", [])}))
         if url.path == "/api/chat":
+            # propose: write nothing, hand back the yaml and a structural diff for the canvas
+            if body.get("propose"):
+                if body.get("folder"):
+                    folder = os.path.join(WORKFLOWS_DIR, body["folder"])
+                    result = propose_edit(folder, body["message"], node=body.get("node", ""))
+                    if result.get("success"):
+                        result["diff"] = diffs.diff(result.get("current", ""), result["yaml"])
+                        result["folder"] = body["folder"]
+                else:
+                    result = propose_workflow(body["message"])
+                    if result.get("success"):
+                        result["diff"] = diffs.diff("", result["yaml"])
+                return self._send(result)
             if body.get("folder"):
                 result = edit_workflow_from_ai(os.path.join(WORKFLOWS_DIR, body["folder"]), body["message"])
             else:

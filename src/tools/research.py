@@ -3,6 +3,7 @@ import json
 import os
 import re
 import threading
+from urllib.parse import urljoin
 
 import httpx
 
@@ -73,11 +74,42 @@ def _dom(url):
     return ".".join(key(url).split("/")[0].split(".")[-2:])
 
 
-def _harvest(html):
-    st = state()
-    for url in re.findall(r'href="(https?://[^"\s#]+)"', html):
+HREF = re.compile(r"""href\s*=\s*["']([^"'>\s]+)["']""", re.I)
+TITLE = re.compile(r"(?is)<title[^>]*>(.*?)</title>")
+
+
+def links_in(html, base=""):
+    """Every page link on a page, made absolute and stripped of junk, in the order they appear."""
+    found, seen = [], set()
+    for raw in HREF.findall(html or ""):
+        url = urljoin(base, raw.strip()) if base else raw.strip()
+        url = url.partition("#")[0]
+        if not url.lower().startswith(("http://", "https://")):
+            continue
         if JUNK.search(url) or BLOCK.search(url):
             continue
+        if key(url) in seen:
+            continue
+        seen.add(key(url))
+        found.append(url)
+    return found
+
+
+def text_of(html):
+    """The visible text of a page, scripts and markup stripped."""
+    html = re.sub(r"(?is)<(script|style|noscript|svg).*?</\1>", " ", html or "")
+    return re.sub(r"\s+", " ", re.sub(r"(?s)<[^>]+>", " ", html)).strip()
+
+
+def title_of(html):
+    found = TITLE.search(html or "")
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", found.group(1))).strip()[:200] if found else ""
+
+
+def note_links(urls):
+    """Offer links to the crawl frontier, so a later search can pick up where a page left off."""
+    st = state()
+    for url in urls:
         path = key(url).partition("/")[2].strip("/")
         if len(path) < 2:  # bare domains are usually ad hosts
             continue
@@ -87,6 +119,33 @@ def _harvest(html):
             continue
         if len(st["frontier"]) < 5000 and url not in st["frontier"]:
             st["frontier"].append(url)
+
+
+def _harvest(html, base=""):
+    note_links(links_in(html, base))
+
+
+def remember_page(url, text):
+    """Keep what was read, so a record quoting this page can be checked against it later."""
+    st = state()
+    st["fetched"][key(url)] = None
+    st["text"][key(url)] = text
+    while len(st["text"]) > 60:  # evidence for recent pages only, text is heavy
+        st["text"].pop(next(iter(st["text"])))
+
+
+def page_digest(text):
+    return hashlib.md5(text.encode()).hexdigest()
+
+
+def is_fresh_page(text):
+    """False when this exact page body has already been read, under any url. Marks it read."""
+    st = state()
+    digest = page_digest(text)
+    if digest in st["pages"]:
+        return False
+    st["pages"][digest] = None
+    return True
 
 
 def http_get(url: str) -> str:
@@ -106,17 +165,12 @@ def http_get(url: str) -> str:
     except Exception as e:
         return f"error {e}"
     st["fetched"][key(url)] = None
-    _harvest(html)
-    html = re.sub(r"(?is)<(script|style).*?</\1>", " ", html)
-    text = re.sub(r"\s+", " ", re.sub(r"(?s)<[^>]+>", " ", html)).strip()[:20000]
-    digest = hashlib.md5(text.encode()).hexdigest()
-    if digest in st["pages"]:
+    _harvest(html, url)
+    text = text_of(html)[:20000]
+    if not is_fresh_page(text):
         _save()
         return f"skipped, {url} repeats content already read, go somewhere new"
-    st["pages"][digest] = None
-    st["text"][key(url)] = text
-    while len(st["text"]) > 60:  # evidence for recent pages only, text is heavy
-        st["text"].pop(next(iter(st["text"])))
+    remember_page(url, text)
     _save()
     return text
 
